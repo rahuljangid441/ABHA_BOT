@@ -72,6 +72,112 @@ export function ChatKitPanel({
     };
   }, []);
 
+  // Inject styles into ChatKit shadow DOM for message backgrounds
+  useEffect(() => {
+    if (!isBrowser || scriptStatus !== "ready") {
+      return;
+    }
+
+    const injectStyles = () => {
+      const chatkitElement = document.querySelector("openai-chatkit");
+      if (!chatkitElement) {
+        return;
+      }
+
+      // Get shadow root
+      const shadowRoot = chatkitElement.shadowRoot;
+      if (!shadowRoot) {
+        return;
+      }
+
+      // Check if styles already injected
+      if (shadowRoot.querySelector("#custom-message-styles")) {
+        return;
+      }
+
+      // Create style element
+      const style = document.createElement("style");
+      style.id = "custom-message-styles";
+      style.textContent = `
+        /* Style assistant messages - targeting the article container */
+        article[data-thread-turn="assistant"] {
+          background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%) !important;
+          border-radius: 18px !important;
+          padding: 20px 24px !important;
+          margin: 12px 0 !important;
+          box-shadow: 0 2px 12px rgba(34, 197, 94, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+          border: 1px solid rgba(34, 197, 94, 0.2) !important;
+        }
+        
+        /* Also target the inner div container */
+        article[data-thread-turn="assistant"] > div.jyK53,
+        article[data-thread-turn="assistant"] > div[data-thread-item="assistant-message"] {
+          background: transparent !important;
+        }
+        
+        /* Ensure content wrapper is transparent */
+        div.fYdWH.poBAH {
+          background: transparent !important;
+        }
+        
+        /* Style user messages */
+        article[data-thread-turn="user"] {
+          background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%) !important;
+          border-radius: 18px !important;
+          padding: 16px 20px !important;
+          margin: 12px 0 !important;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+          border: 1px solid rgba(148, 163, 184, 0.3) !important;
+        }
+      `;
+
+      shadowRoot.appendChild(style);
+    };
+
+    // Try to inject styles multiple times to ensure it works
+    const timeoutId1 = setTimeout(() => {
+      injectStyles();
+    }, 500);
+    
+    const timeoutId2 = setTimeout(() => {
+      injectStyles();
+    }, 1500);
+    
+    const timeoutId3 = setTimeout(() => {
+      injectStyles();
+    }, 3000);
+
+    // Also set up mutation observer for dynamic content
+    let observer: MutationObserver | null = null;
+    const setupObserver = () => {
+      const chatkitElement = document.querySelector("openai-chatkit");
+      if (chatkitElement && !observer) {
+        observer = new MutationObserver(() => {
+          // Re-inject styles when new messages are added
+          setTimeout(() => {
+            injectStyles();
+          }, 100);
+        });
+        observer.observe(chatkitElement, {
+          childList: true,
+          subtree: true,
+        });
+      }
+    };
+
+    const observerTimeoutId = setTimeout(setupObserver, 2000);
+
+    return () => {
+      clearTimeout(timeoutId1);
+      clearTimeout(timeoutId2);
+      clearTimeout(timeoutId3);
+      clearTimeout(observerTimeoutId);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [scriptStatus, isBrowser]);
+
   useEffect(() => {
     if (!isBrowser) {
       return;
@@ -344,7 +450,7 @@ export function ChatKitPanel({
   }
 
   return (
-    <div className="relative pb-8 flex h-[90vh] w-full rounded-2xl flex-col overflow-hidden bg-white shadow-sm transition-colors dark:bg-slate-900">
+    <div className="relative flex h-[90vh] md:h-[92vh] w-full rounded-3xl flex-col overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg border border-gray-200/60 transition-all duration-300 hover:shadow-xl">
       <ChatKit
         key={widgetInstanceKey}
         control={chatkit.control}

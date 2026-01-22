@@ -7,29 +7,34 @@ export const CREATE_SESSION_ENDPOINT = "/api/create-session";
 
 export const STARTER_PROMPTS: StartScreenPrompt[] = [
   {
-    label: "What can you do?",
-    prompt: "What can you do?",
+    label: "Get Started",
+    prompt: "Hello! How can I help you today?",
+    icon: "sparkle",
+  },
+  {
+    label: "Ask a Question",
+    prompt: "I have a question",
     icon: "circle-question",
   },
 ];
 
-export const PLACEHOLDER_INPUT = "Ask anything...";
+export const PLACEHOLDER_INPUT = "Type your message...";
 
-export const GREETING = "How can I help you today?";
+export const GREETING = "Hello! 👋 How can I assist you today?";
 
 export const getThemeConfig = (theme: ColorScheme): ThemeOption => ({
   color: {
     grayscale: {
-      hue: 220,
-      tint: 6,
-      shade: theme === "dark" ? -1 : -4,
+      hue: 140,
+      tint: 3,
+      shade: -2,
     },
     accent: {
-      primary: theme === "dark" ? "#f1f5f9" : "#0f172a",
-      level: 1,
+      primary: "#22c55e",
+      level: 2,
     },
   },
   radius: "round",
-  // Add other theme options here
+  // Pleasant theme with green accents and grey tones
   // chatkit.studio/playground to explore config options
 });
