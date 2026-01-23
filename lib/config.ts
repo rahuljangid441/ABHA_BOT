@@ -7,20 +7,44 @@ export const CREATE_SESSION_ENDPOINT = "/api/create-session";
 
 export const STARTER_PROMPTS: StartScreenPrompt[] = [
   {
-    label: "Get Started",
-    prompt: "Hello! How can I help you today?",
-    icon: "sparkle",
+    label: "ABHA क्या है?",
+    prompt: "ABHA क्या है?",
+    icon: "circle-question",
   },
   {
-    label: "Ask a Question",
-    prompt: "I have a question",
+    label: "ABHA कैसे बनेगा?",
+    prompt: "ABHA कैसे बनेगा?",
+    icon: "circle-question",
+  },
+  {
+    label: "ABHA कहाँ काम आएगा?",
+    prompt: "ABHA कहाँ काम आएगा?",
+    icon: "circle-question",
+  },
+  {
+    label: "FAQs",
+    prompt: "FAQs",
+    icon: "circle-question",
+  },
+  {
+    label: "सहायता",
+    prompt: "सहायता",
     icon: "circle-question",
   },
 ];
 
+// Custom question buttons for ABHA bot
+export const QUESTION_BUTTONS = [
+  "ABHA क्या है?",
+  "ABHA कैसे बनेगा?",
+  "ABHA कहाँ काम आएगा?",
+  "FAQs",
+  "सहायता",
+];
+
 export const PLACEHOLDER_INPUT = "Type your message...";
 
-export const GREETING = "Hello! 👋 How can I assist you today?";
+export const GREETING = "नमस्ते! 👋 मैं ABHA सहायता चैटबॉट हूँ। आप ABHA क्या है, ABHA कैसे बनता है, ABHA कहाँ काम आता है, FAQs या सहायता के बारे में पूछ सकते हैं।";
 
 export const getThemeConfig = (theme: ColorScheme): ThemeOption => ({
   color: {

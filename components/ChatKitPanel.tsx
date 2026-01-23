@@ -9,6 +9,7 @@ import {
   CREATE_SESSION_ENDPOINT,
   WORKFLOW_ID,
   getThemeConfig,
+  QUESTION_BUTTONS,
 } from "@/lib/config";
 import { ErrorOverlay } from "./ErrorOverlay";
 import type { ColorScheme } from "@/hooks/useColorScheme";
@@ -171,6 +172,234 @@ export function ChatKitPanel({
       clearTimeout(timeoutId1);
       clearTimeout(timeoutId2);
       clearTimeout(timeoutId3);
+      clearTimeout(observerTimeoutId);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [scriptStatus, isBrowser]);
+
+  // Make list items in assistant messages clickable
+  useEffect(() => {
+    if (!isBrowser || scriptStatus !== "ready") {
+      return;
+    }
+
+    const makeListItemsClickable = () => {
+      const chatkitElement = document.querySelector("openai-chatkit");
+      if (!chatkitElement) {
+        if (isDev) console.log("[Clickable] ChatKit element not found");
+        return;
+      }
+
+      const shadowRoot = chatkitElement.shadowRoot;
+      if (!shadowRoot) {
+        if (isDev) console.log("[Clickable] Shadow DOM not accessible");
+        return;
+      }
+
+      // Inject a script that runs inside the shadow DOM
+      if (!shadowRoot.querySelector("#clickable-script")) {
+        const script = document.createElement("script");
+        script.id = "clickable-script";
+        script.textContent = `
+          (function() {
+            function makeClickable() {
+              // Find all list items in assistant messages
+              const listItems = document.querySelectorAll('article[data-thread-turn="assistant"] li');
+              
+              listItems.forEach((li) => {
+                if (li.hasAttribute('data-clickable-processed')) return;
+                
+                // Get text from paragraph or directly from li
+                let questionText = '';
+                const p = li.querySelector('p');
+                if (p && p.textContent?.trim()) {
+                  questionText = p.textContent.trim();
+                } else if (li.textContent?.trim()) {
+                  questionText = li.textContent.trim();
+                }
+                
+                if (!questionText) return;
+                
+                li.setAttribute('data-clickable-processed', 'true');
+                
+                // Style - make it look like a button
+                li.style.cursor = 'pointer';
+                li.style.padding = '12px 16px';
+                li.style.margin = '6px 0';
+                li.style.borderRadius = '12px';
+                li.style.backgroundColor = '#f0fdf4';
+                li.style.border = '1px solid rgba(34, 197, 94, 0.25)';
+                li.style.transition = 'all 0.2s ease';
+                li.style.userSelect = 'none';
+                li.style.display = 'block';
+                li.style.width = 'fit-content';
+                li.style.minWidth = '200px';
+                
+                // Hover effect
+                li.addEventListener('mouseenter', () => {
+                  li.style.backgroundColor = '#dcfce7';
+                  li.style.transform = 'translateX(4px)';
+                  li.style.boxShadow = '0 2px 8px rgba(34, 197, 94, 0.2)';
+                  li.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+                });
+                
+                li.addEventListener('mouseleave', () => {
+                  li.style.backgroundColor = '#f0fdf4';
+                  li.style.transform = 'translateX(0)';
+                  li.style.boxShadow = 'none';
+                  li.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+                });
+                
+                // Click handler
+                li.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Clean up the question text
+                  let question = questionText;
+                  
+                  // Remove bullet points, dashes, etc.
+                  question = question.replace(/^[\\-\\*•]\\s*/, '').trim();
+                  
+                  // Remove English translation if present
+                  if (question.includes(' / ')) {
+                    question = question.split(' / ')[0].trim();
+                  }
+                  
+                  // Remove trailing punctuation but keep the question
+                  question = question.replace(/[।]$/, '').trim();
+                  
+                  if (!question) return;
+                  
+                  // Find input field in shadow DOM
+                  const findInput = () => {
+                    const selectors = [
+                      'textarea',
+                      'input[type="text"]',
+                      '[contenteditable="true"]',
+                      '[role="textbox"]'
+                    ];
+                    
+                    for (const sel of selectors) {
+                      const input = document.querySelector(sel);
+                      if (input) return input;
+                    }
+                    return null;
+                  };
+                  
+                  const input = findInput();
+                  
+                  if (input) {
+                    // Set value
+                    if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+                      input.value = question;
+                      input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                      input.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+                    } else if (input.contentEditable === 'true') {
+                      input.textContent = question;
+                      input.innerText = question;
+                      input.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                    }
+                    
+                    input.focus();
+                    
+                    // Find and click send button
+                    setTimeout(() => {
+                      let sendBtn = document.querySelector('button[type="submit"]');
+                      
+                      if (!sendBtn) {
+                        // Try to find button with arrow icon
+                        const buttons = document.querySelectorAll('button');
+                        sendBtn = Array.from(buttons).find(btn => {
+                          const svg = btn.querySelector('svg');
+                          if (svg) {
+                            const paths = svg.querySelectorAll('path');
+                            for (const path of paths) {
+                              const d = path.getAttribute('d') || '';
+                              // Common arrow up patterns
+                              if (d.includes('M12') && (d.includes('4') || d.includes('5') || d.includes('L12'))) {
+                                return true;
+                              }
+                            }
+                          }
+                          return false;
+                        });
+                      }
+                      
+                      if (sendBtn) {
+                        sendBtn.click();
+                      } else {
+                        // Fallback: Enter key
+                        const enterEvent = new KeyboardEvent('keydown', {
+                          key: 'Enter',
+                          code: 'Enter',
+                          keyCode: 13,
+                          which: 13,
+                          bubbles: true,
+                          cancelable: true
+                        });
+                        input.dispatchEvent(enterEvent);
+                      }
+                    }, 150);
+                  }
+                });
+              });
+            }
+            
+            // Run immediately
+            makeClickable();
+            
+            // Watch for new messages
+            const observer = new MutationObserver(() => {
+              setTimeout(makeClickable, 300);
+            });
+            observer.observe(document.body, { 
+              childList: true, 
+              subtree: true,
+              attributes: true
+            });
+            
+            // Also listen for response end events from outside
+            window.addEventListener('chatkit-response-ended', () => {
+              setTimeout(makeClickable, 500);
+            });
+          })();
+        `;
+        shadowRoot.appendChild(script);
+        if (isDev) console.log("[Clickable] Script injected into shadow DOM");
+      } else {
+        // Script already exists, just trigger it
+        if (isDev) console.log("[Clickable] Script already exists, triggering makeClickable");
+      }
+    };
+
+    // Run initially and set up observer for new messages
+    const timeoutId = setTimeout(() => {
+      makeListItemsClickable();
+    }, 1000);
+
+    let observer: MutationObserver | null = null;
+    const setupObserver = () => {
+      const chatkitElement = document.querySelector("openai-chatkit");
+      if (chatkitElement && !observer) {
+        observer = new MutationObserver(() => {
+          setTimeout(() => {
+            makeListItemsClickable();
+          }, 300);
+        });
+        observer.observe(chatkitElement, {
+          childList: true,
+          subtree: true,
+        });
+      }
+    };
+
+    const observerTimeoutId = setTimeout(setupObserver, 2000);
+
+    return () => {
+      clearTimeout(timeoutId);
       clearTimeout(observerTimeoutId);
       if (observer) {
         observer.disconnect();
@@ -422,6 +651,17 @@ export function ChatKitPanel({
     },
     onResponseEnd: () => {
       onResponseEnd();
+      // Trigger making list items clickable after response ends
+      if (isBrowser && scriptStatus === "ready") {
+        setTimeout(() => {
+          const chatkitElement = document.querySelector("openai-chatkit");
+          if (chatkitElement?.shadowRoot) {
+            // Dispatch a custom event to trigger the clickable script
+            const event = new CustomEvent("chatkit-response-ended");
+            chatkitElement.dispatchEvent(event);
+          }
+        }, 500);
+      }
     },
     onResponseStart: () => {
       setErrorState({ integration: null, retryable: false });
@@ -435,6 +675,7 @@ export function ChatKitPanel({
       console.error("ChatKit error", error);
     },
   });
+
 
   const activeError = errors.session ?? errors.integration;
   const blockingError = errors.script ?? activeError;
@@ -460,6 +701,8 @@ export function ChatKitPanel({
             : "block h-full w-full"
         }
       />
+      
+
       <ErrorOverlay
         error={blockingError}
         fallbackMessage={
